@@ -105,6 +105,9 @@ checker will check a specific security aspect of the request. For example::
   def SensitiveMethod(self):
       # This is only allowed with HTTP POST requests.
 
+Previous versions of plone.protect required a ``REQUEST`` parameter on
+decorated methods. This limitation was removed in plone.protect 2.1.
+
 Customized Form Authentication
 -------------------------------
 
@@ -129,3 +132,4 @@ With the decorator::
   @protect(CustomCheckAuthenticator('a-form-related-value'))
   def manage_doSomething(self, param, REQUEST=None):
       pass
+
