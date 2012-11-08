@@ -12,6 +12,7 @@ from plone.protect.authenticator import check
 from plone.protect import protect
 from plone.protect import CustomCheckAuthenticator
 from plone.protect import createToken
+from zope.globalrequest import setRequest
 
 try:
     from hashlib import sha1 as sha
@@ -108,24 +109,19 @@ class DecoratorTests(KeyringTestCase):
 
     def setUp(self):
         self.request = HTTPRequest(sys.stdin, dict(SERVER_URL="dummy"), None)
+        setRequest(self.request)
         KeyringTestCase.setUp(self)
 
-        def func(REQUEST=None):
+        def func():
             return 1
         self.func = protect(check)(func)
 
-    def testNoRequestParameter(self):
-
-        def func():
-            pass
-        self.assertRaises(ValueError, protect(check), func)
-
-    def testIgnoreBadRequestType(self):
-        self.assertEqual(self.func(), 1)
+    def tearDown(self):
+        setRequest(None)
 
     def testBadAuthenticator(self):
         self.request["_authenticator"] = "incorrect"
-        self.assertRaises(Forbidden, self.func, self.request)
+        self.assertRaises(Forbidden, self.func)
 
     def testAuthenticatedCustom(self):
         self.request['_authenticator'] = createToken('some-value')

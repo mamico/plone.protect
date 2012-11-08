@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.1 - unreleased
+----------------
+
+- Refactor to use zope.globalrequest and the decorator package.
+  [elro]
+
 2.0.1 - unreleased
 ------------------
 
