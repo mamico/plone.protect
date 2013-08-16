@@ -4,7 +4,7 @@ Changelog
 3.0dev (unreleased)
 -------------------
 
-- Nothing changed yet.
+- add automatic CSRF protection
 
 
 2.0.2 (2012-12-09)

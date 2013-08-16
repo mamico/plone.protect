@@ -13,3 +13,9 @@ class IAuthenticatorView(Interface):
         """
         Verify if the request contains a valid authenticator.
         """
+
+
+class IDisableProtection(Interface):
+    """
+    Be able to disable on a per-request basis
+    """
