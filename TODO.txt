@@ -1,0 +1,3 @@
+- plone.app.portlets assignments not fully installed--will cause write after site is created
+- quickinstaller uses bloody tools like view logic. That whole package should be rewritten, refactored
+

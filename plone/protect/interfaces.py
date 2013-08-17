@@ -19,3 +19,7 @@ class IDisableProtection(Interface):
     """
     Be able to disable on a per-request basis
     """
+
+
+class IConfirmView(Interface):
+    pass

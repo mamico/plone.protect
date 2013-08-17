@@ -14,9 +14,23 @@ from zope.interface import implements, Interface
 from zope.component import adapts
 from repoze.xmliter.utils import getHTMLSerializer
 from lxml import etree
+import transaction
+from zExceptions import Forbidden
+from zope.component.hooks import getSite
+from urllib import urlencode
+from OFS.interfaces import IApplication
+from plone.protect.interfaces import IConfirmView
+from plone.portlets.interfaces import IPortletAssignment
+from Products.CMFQuickInstallerTool.interfaces import IQuickInstallerTool
 
 
 class ProtectTransform(object):
+    """
+    XXX Need to be extremely careful with everything we do in here
+    since an error here would mean the transform is skipped
+    and no CSRF protection...
+    """
+
     implements(ITransform)
     adapts(Interface, Interface)  # any context, any request
 
@@ -56,13 +70,29 @@ class ProtectTransform(object):
     def transformIterable(self, result, encoding):
         """Apply the transform if required
         """
+
+        # only auto CSRF protect authenticated users
         if getSecurityManager().getUser() is None:
             return
 
-        result = self.parseTree(result)
-        if result is None:
-            return None
+        # if on confirm view, do not check, just abort and
+        # immediately transform without csrf checking again
+        if IConfirmView.providedBy(self.request.get('PUBLISHED')):
+            # abort it, show the confirmation...
+            transaction.abort()
+            return self.transform(result)
 
+        # next, check if we're zope root.
+        # XXX right now, we're not protecting zope root :(
+        context = self.getContext()
+        if IApplication.providedBy(context):
+            return
+
+        if not self.check():
+            # we don't need to transform the doc, we're getting redirected
+            return
+
+        # finally, let's run the transform
         return self.transform(result)
 
     def getHost(self):
@@ -75,35 +105,60 @@ class ProtectTransform(object):
         published = self.request.get('PUBLISHED')
         return aq_parent(published)
 
-    def transform(self, result):
-
-        if getSecurityManager().getUser() is None:
-            return
-
+    def check(self):
         app = self.request.PARENTS[-1]
         if len(app._p_jar._registered_objects) > 0 and not \
                 IDisableProtection.providedBy(self.request):
             # XXX Okay, we're writing here, we need to protect!
-            check(self.request)
-            #context = self.getContext()
-            # XXX need to handle redirect case here
-            #data = self.request.form.copy()
-            #data['action'] = action
-            #data['original_url'] = self.request.URL + '?' + \
-            #    self.request.QUERY_STRING
-            #if action in _redirected_actions:
-            #    data['referer'] = self.request.environ.get('HTTP_REFERER')
-            #self.request.response.redirect('%s/@@confirm-action?%s' % (
-            #    context.absolute_url(),
-            #    urlencode(data)
-            #))
+            try:
+                check(self.request)
+                return True
+            except Forbidden:
+                if self.request.REQUEST_METHOD != 'GET':
+                    # only try to "fix" GET requests
+                    raise
+                # abort the transaction and just be silent
+                # XXX
+                # okay, so right now, we're going to check if the current
+                # registered objects to write, are just portlet assignments.
+                # I don't know why, but when a site is created, these
+                # cause some writes on read. ALL, registered objects
+                # need to be portlet assignments. XXX needs to be fixed
+                # somehow...
+                all_portlet_assignments = True
+                for obj in app._p_jar._registered_objects:
+                    if not IPortletAssignment.providedBy(obj):
+                        all_portlet_assignments = False
+                        break
+                # XXX and quickinstaller is stupid also
+                quickinstaller_view = False
+                if len(app._p_jar._registered_objects) == 1 and \
+                        IQuickInstallerTool.providedBy(
+                            app._p_jar._registered_objects[0]):
+                    quickinstaller_view = True
+                if not all_portlet_assignments and not quickinstaller_view:
+                    transaction.abort()
+                    data = self.request.form.copy()
+                    data['original_url'] = self.request.URL
+                    self.request.response.redirect('%s/@@confirm-action?%s' % (
+                        getSite().absolute_url(),
+                        urlencode(data)
+                    ))
+                    return False
+        return True
 
+    def transform(self, result):
+        result = self.parseTree(result)
+        if result is None:
+            return None
         root = result.tree.getroot()
         host, port = self.getHost()
         for form in root.cssselect('form'):
-            method = form.attrib.get('method', 'GET').lower()
-            if method != 'post':
-                continue
+            # XXX should we only do POST? If we're logged in and
+            # it's an internal form, I'm inclined to say no...
+            #method = form.attrib.get('method', 'GET').lower()
+            #if method != 'post':
+            #    continue
             action = form.attrib.get('action', '').strip()
             if action:
                 # prevent leaking of token
@@ -114,6 +169,7 @@ class ProtectTransform(object):
                     continue
             hidden = etree.Element("input")
             hidden.attrib['name'] = '_authenticator'
+            hidden.attrib['type'] = 'hidden'
             hidden.attrib['value'] = createToken()
             form.append(hidden)
 
