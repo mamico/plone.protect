@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '3.0.dev0'
+version = '3.0.0a1'
 
 setup(
     name='plone.protect',
@@ -34,7 +34,8 @@ setup(
         'zope.interface',
         'Zope2',
         'plone.transformchain',
-        'repoze.xmliter>=0.3'
+        'repoze.xmliter>=0.3',
+        'five.globalrequest'
     ],
     extras_require={
         'test': [

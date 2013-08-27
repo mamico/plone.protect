@@ -20,6 +20,7 @@ class ProtectedLayer(PloneSandboxLayer):
     def setUpPloneSite(self, portal):
         # install into the Plone site
         applyProfile(portal, 'plone.protect:default')
+        self.portal = portal
 
 
 PROTECT_FIXTURE = ProtectedLayer()

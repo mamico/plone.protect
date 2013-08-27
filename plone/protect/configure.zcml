@@ -7,6 +7,7 @@
 
     <include package="plone.keyring" />
     <include package="plone.transformchain" />
+    <include package="five.globalrequest" />
 
     <browser:page
        for="*"
