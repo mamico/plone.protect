@@ -4,6 +4,9 @@ Changelog
 3.0dev (unreleased)
 -------------------
 
+- add automatic clickjacking protection(thanks to Manish Bhattacharya)
+  [vangheem]
+
 - add automatic CSRF protection
 
 

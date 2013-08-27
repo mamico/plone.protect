@@ -1,3 +1,5 @@
+import os
+
 from AccessControl import getSecurityManager
 from Acquisition import aq_parent
 
@@ -22,6 +24,9 @@ from OFS.interfaces import IApplication
 from plone.protect.interfaces import IConfirmView
 from plone.portlets.interfaces import IPortletAssignment
 from Products.CMFQuickInstallerTool.interfaces import IQuickInstallerTool
+
+
+X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
 
 
 class ProtectTransform(object):
@@ -70,6 +75,8 @@ class ProtectTransform(object):
     def transformIterable(self, result, encoding):
         """Apply the transform if required
         """
+        # before anything, do the clickjacking protection
+        self.request.response.setHeader('X-Frame-Options', X_FRAME_OPTIONS)
 
         # only auto CSRF protect authenticated users
         if getSecurityManager().getUser() is None:
