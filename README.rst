@@ -91,6 +91,13 @@ Or just::
     CheckAuthenticator(self.context.REQUEST)
     ...
 
+Headers
+-------
+
+You can also pass in the token by using the header `X-CSRF-TOKEN`. This can be
+useful for AJAX requests.
+
+
 Protect decorator
 =================
 
@@ -131,3 +138,14 @@ With the decorator::
   @protect(CustomCheckAuthenticator('a-form-related-value'))
   def manage_doSomething(self, param, REQUEST=None):
       pass
+
+
+Automatic CSRF Protection
+=========================
+
+Since version 3, plone.protect provides automatic CSRF protection. It does
+this by automatically including the auth token to all internal forms when
+the user reqeusting the page is logged in.
+
+Additionally, whenever a particular request attempts to write to the ZODB,
+it'll check for the existence of a correct auth token.

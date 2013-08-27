@@ -38,7 +38,9 @@ def _is_equal(val1, val2):
 def _verify(request, extra='', name='_authenticator'):
     auth = request.get(name)
     if auth is None:
-        return False
+        auth = request.getHeader('X-CSRF-TOKEN')
+        if auth is None:
+            return False
 
     manager = getUtility(IKeyManager)
     ring = manager[u"_system"]
@@ -66,8 +68,7 @@ class AuthenticatorView(BrowserView):
 
     def authenticator(self, extra='', name='_authenticator'):
         auth = createToken(extra)
-        return '<input type="hidden" name="%s" value="%s"/>' % (
-                name, auth)
+        return '<input type="hidden" name="%s" value="%s"/>' % (name, auth)
 
     def verify(self, extra='', name="_authenticator"):
         return _verify(self.request, extra=extra, name=name)

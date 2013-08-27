@@ -66,6 +66,8 @@ def addTokenToUrl(url, req=None):
         # only transforms urls to same site
         return url
     if '_auth_token' not in req.environ:
+        # let's cache this value since this could be called
+        # many times for one request
         req.environ['_auth_token'] = createToken()
     token = req.environ['_auth_token']
 

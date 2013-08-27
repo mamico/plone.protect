@@ -1,8 +1,10 @@
 import unittest2 as unittest
 
 from plone.testing.z2 import Browser
-
 from plone.protect.testing import PROTECT_FUNCTIONAL_TESTING
+
+from plone.protect import createToken
+from plone.protect.authenticator import AuthenticatorView
 
 
 class AutoCSRFProtectTests(unittest.TestCase):
@@ -11,6 +13,7 @@ class AutoCSRFProtectTests(unittest.TestCase):
     def setUp(self):
         self.portal = self.layer['portal']
         self.browser = Browser(self.layer['app'])
+        self.request = self.layer['request']
 
     def open(self, path):
         self.browser.open(self.portal.absolute_url() + '/' + path)
@@ -39,6 +42,16 @@ class AutoCSRFProtectTests(unittest.TestCase):
             self.browser.getControl('submit1').click()
         except Exception, ex:
             self.assertEquals(ex.getcode(), 403)
+
+    def testCSRFHeader(self):
+        self.request.environ['HTTP_X_CSRF_TOKEN'] = createToken()
+        view = AuthenticatorView(None, self.request)
+        self.assertEqual(view.verify(), True)
+
+    def testIncorrectCSRFHeader(self):
+        self.request.environ['HTTP_X_CSRF_TOKEN'] = 'foobar'
+        view = AuthenticatorView(None, self.request)
+        self.assertEqual(view.verify(), False)
 
 """
     def testAbortsTransactionIfNotProtected(self):

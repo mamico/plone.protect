@@ -17,6 +17,9 @@ class MockRequest(dict):
     def setReferer(self, url):
         self.environ['HTTP_REFERER'] = url
 
+    def getHeader(self, name):
+        return None
+
 
 class MockKeyManager:
     implements(IKeyManager)
@@ -35,8 +38,8 @@ class KeyringTestCase(TestCase):
     def setUp(self):
         self.sm = getGlobalSiteManager()
         self.manager = MockKeyManager()
-        self.sm.registerUtility(self.manager,
-            provided=IKeyManager, event=False)
+        self.sm.registerUtility(self.manager, provided=IKeyManager,
+                                event=False)
         # Tests modify the user object so we better make sure it is *our*
         # user object and not the built-in Anonymous User.
         newSecurityManager(None, User('dummy', 'secret', (), ()))
