@@ -1,5 +1,4 @@
 import os
-import time
 import traceback
 
 from AccessControl import getSecurityManager
@@ -25,21 +24,11 @@ from urllib import urlencode
 from OFS.interfaces import IApplication
 from plone.protect.interfaces import IConfirmView
 from plone.portlets.interfaces import IPortletAssignment
-from plone.keyring.interfaces import IKeyManager
-from zope.component import getUtility
 from plone.protect.authenticator import isAnonymousUser
-from zope.component import ComponentLookupError
 from ZODB.POSException import ConflictError
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
-
-
-_ring_rotation_schedules = (
-    ('_system', 60 * 60 * 24 * 7),  # weekly
-    ('_forms', 60 * 60 * 24),  # daily
-    ('_anon', 60 * 60 * 24),  # daily
-)
 
 
 class ProtectTransform(object):
@@ -109,32 +98,7 @@ class ProtectTransform(object):
         if not context or IApplication.providedBy(context):
             return
 
-        if self.check():
-            # safe check, let's see if it's time to rotate the keys
-            # yes, I know, this will cause a write on read...
-            # we know it's safe and the user is logged in
-            # disadvantage: only rotates if user is logged in.
-            #   sites that people don't log into often will not get keys
-            #   rotated
-            # possible edge case:
-            #   request was aborted, but redirected and we try to write?
-            #   XXX do we need to check if the transaction was aborted first?
-            # XXX should we check if the client is not read-only first?
-            try:
-                manager = getUtility(IKeyManager)
-                current_time = time.time()
-                for ring_name, check_period in _ring_rotation_schedules:
-                    try:
-                        ring = manager[ring_name]
-                        if (ring.last_rotation + check_period) < current_time:
-                            LOGGER.info('auto rotating keyring %s' % ring_name)
-                            ring.rotate()
-                    except KeyError:
-                        continue
-            except ComponentLookupError:
-                LOGGER.warn('cannot find key manager for url %s' % (
-                    self.request.URL))
-        else:
+        if not self.check():
             # we don't need to transform the doc, we're getting redirected
             return
 

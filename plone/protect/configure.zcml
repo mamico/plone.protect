@@ -40,5 +40,7 @@
         permission="zope2.View"
     />
 
+    <subscriber handler=".subscribers.onUserLogsIn" />
+
 </configure>
 

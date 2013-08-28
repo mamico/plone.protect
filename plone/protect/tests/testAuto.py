@@ -76,12 +76,29 @@ class AutoCSRFProtectTests(unittest.TestCase):
         except LookupError:
             pass
 
-    def test_keyrings_get_rotated_on_requests(self):
+
+class AutoRotateTests(unittest.TestCase):
+    layer = PROTECT_FUNCTIONAL_TESTING
+
+    def setUp(self):
+        self.portal = self.layer['portal']
+        self.browser = Browser(self.layer['app'])
+        self.request = self.layer['request']
+
+    def test_keyrings_get_rotated_on_login(self):
         manager = getUtility(IKeyManager)
         ring = manager['_forms']
         keys = ring.data
         ring.last_rotation = 0
         transaction.commit()
-        self.open('test-unprotected')
+
+        # should be rotated on login
+        login(self.portal, TEST_USER_NAME)
+        self.browser.open(self.portal.absolute_url() + '/login_form')
+        self.browser.getControl(name='__ac_name').value = TEST_USER_NAME
+        self.browser.getControl(
+            name='__ac_password').value = TEST_USER_PASSWORD
+        self.browser.getControl(name='submit').click()
+
         self.assertNotEqual(keys, ring.data)
         self.assertNotEqual(ring.last_rotation, 0)
