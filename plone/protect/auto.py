@@ -23,7 +23,6 @@ from urllib import urlencode
 from OFS.interfaces import IApplication
 from plone.protect.interfaces import IConfirmView
 from plone.portlets.interfaces import IPortletAssignment
-from Products.CMFQuickInstallerTool.interfaces import IQuickInstallerTool
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
@@ -137,13 +136,7 @@ class ProtectTransform(object):
                     if not IPortletAssignment.providedBy(obj):
                         all_portlet_assignments = False
                         break
-                # XXX and quickinstaller is stupid also
-                quickinstaller_view = False
-                if len(app._p_jar._registered_objects) == 1 and \
-                        IQuickInstallerTool.providedBy(
-                            app._p_jar._registered_objects[0]):
-                    quickinstaller_view = True
-                if not all_portlet_assignments and not quickinstaller_view:
+                if not all_portlet_assignments:
                     transaction.abort()
                     data = self.request.form.copy()
                     data['original_url'] = self.request.URL
