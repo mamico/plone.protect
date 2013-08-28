@@ -169,11 +169,14 @@ class ProtectTransform(object):
                         action.startswith(host) or
                         action.startswith(host + ':' + port)):
                     continue
-            hidden = etree.Element("input")
-            hidden.attrib['name'] = '_authenticator'
-            hidden.attrib['type'] = 'hidden'
-            hidden.attrib['value'] = createToken()
-            form.append(hidden)
+            # check if the token is already on the form..
+            hidden = form.cssselect('[name="_authenticator"]')
+            if len(hidden) == 0:
+                hidden = etree.Element("input")
+                hidden.attrib['name'] = '_authenticator'
+                hidden.attrib['type'] = 'hidden'
+                hidden.attrib['value'] = createToken()
+                form.append(hidden)
 
         return result
 
