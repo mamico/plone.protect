@@ -3,6 +3,9 @@ from zope.interface import Interface
 
 class IAuthenticatorView(Interface):
 
+    def token():
+        """return token value"""
+
     def authenticator():
         """Return an xhtml snippet which sets an authenticator.
 
@@ -15,7 +18,7 @@ class IAuthenticatorView(Interface):
         """
 
 
-class IDisableProtection(Interface):
+class IDisableCSRFProtection(Interface):
     """
     Be able to disable on a per-request basis
     """

@@ -1,9 +1,6 @@
 - plone.app.portlets assignments not fully installed--will cause write after site is created
-- quickinstaller uses bloody tools like view logic. That whole package should be rewritten, refactored
 - only do the confirm redirect in certain cases:
     - text/html response
     - 301/302 response
     - reason: some things are safe to abort, not do confirm and redirect
     - or do we error out otherwise?
-- portal_(css|javascript)
-- poke through the ZMI and find everything that is broken--there will be a lot

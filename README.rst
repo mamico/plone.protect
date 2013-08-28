@@ -151,6 +151,16 @@ Additionally, whenever a particular request attempts to write to the ZODB,
 it'll check for the existence of a correct auth token.
 
 
+Allowing write on read programatically
+--------------------------------------
+
+Just add an interface to the current request object::
+
+    from plone.protect.interfaces import IDisableCSRFProtection
+    from zope.interface import alsoProvides
+    alsoProvides(request, IDisableCSRFProtection)
+
+
 Clickjacking Protection
 =======================
 

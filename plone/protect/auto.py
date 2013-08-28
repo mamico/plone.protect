@@ -6,7 +6,7 @@ from Acquisition import aq_parent
 from plone.protect.authenticator import check
 from plone.protect.authenticator import createToken
 
-from plone.protect.interfaces import IDisableProtection
+from plone.protect.interfaces import IDisableCSRFProtection
 
 import logging
 LOGGER = logging.getLogger('plone.protect')
@@ -114,7 +114,7 @@ class ProtectTransform(object):
     def check(self):
         app = self.request.PARENTS[-1]
         if len(app._p_jar._registered_objects) > 0 and not \
-                IDisableProtection.providedBy(self.request):
+                IDisableCSRFProtection.providedBy(self.request):
             # XXX Okay, we're writing here, we need to protect!
             try:
                 check(self.request)
@@ -137,6 +137,8 @@ class ProtectTransform(object):
                         all_portlet_assignments = False
                         break
                 if not all_portlet_assignments:
+                    LOGGER.info('aborting transaction due to no CSRF '
+                                'protection on url %s' % self.request.URL)
                     transaction.abort()
                     data = self.request.form.copy()
                     data['original_url'] = self.request.URL
