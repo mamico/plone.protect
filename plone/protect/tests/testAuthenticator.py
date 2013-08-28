@@ -30,17 +30,12 @@ class AuthenticatorTests(KeyringTestCase):
         user.name = name
 
     def setSecret(self, secret):
-        self.manager.keys[0] = secret
+        self.manager['_forms'].data[0] = secret
 
     def testIsHtmlInput(self):
         auth = self.view.authenticator()
         self.failUnless(auth.startswith("<input"))
         self.failUnless(auth.endswith("/>"))
-
-    def testConsistent(self):
-        one = self.view.authenticator()
-        two = self.view.authenticator()
-        self.assertEqual(one, two)
 
     def testDiffersPerUser(self):
         one = self.view.authenticator()
@@ -73,17 +68,17 @@ class VerifyTests(KeyringTestCase):
         self.request[name] = auth
 
     def testCorrectAuthenticator(self):
-        self.manager.keys[0] = ("secret")
+        self.manager['_forms'].data[0] = "secret"
         self.setAuthenticator("secret")
         self.assertEqual(self.view.verify(), True)
 
     def testCustomAuthenticatorKeyName(self):
-        self.manager.keys[0] = ("secret")
+        self.manager['_forms'].data[0] = "secret"
         self.setAuthenticator("secret", name="_my_authenticator")
         self.assertEqual(self.view.verify(name="_my_authenticator"), True)
 
     def testOlderSecretVerifies(self):
-        self.manager.keys[3] = "backup"
+        self.manager['_forms'].data[3] = "backup"
         self.setAuthenticator("backup")
         self.assertEqual(self.view.verify(), True)
 
@@ -99,7 +94,7 @@ class VerifyTests(KeyringTestCase):
         self.assertEqual(self.view.verify(), False)
 
     def testExtraArgumentCanBeVerified(self):
-        self.manager.keys[0] = ("secret")
+        self.manager['_forms'].data[0] = "secret"
         self.setAuthenticator("secret", 'some-extra-value')
         self.assertEqual(self.view.verify('some-extra-value'), True)
 

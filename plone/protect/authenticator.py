@@ -17,6 +17,10 @@ except ImportError:
 ANONYMOUS_USER = "Anonymous User"
 
 
+def isAnonymousUser(user):
+    return user is None or user.getUserName() == ANONYMOUS_USER
+
+
 def _getUserName():
     user = getSecurityManager().getUser()
     if user is None:

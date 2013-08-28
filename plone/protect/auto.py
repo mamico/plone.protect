@@ -1,4 +1,5 @@
 import os
+import time
 
 from AccessControl import getSecurityManager
 from Acquisition import aq_parent
@@ -23,9 +24,19 @@ from urllib import urlencode
 from OFS.interfaces import IApplication
 from plone.protect.interfaces import IConfirmView
 from plone.portlets.interfaces import IPortletAssignment
+from plone.keyring.interfaces import IKeyManager
+from zope.component import getUtility
+from plone.protect.authenticator import isAnonymousUser
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
+
+
+_ring_rotation_schedules = (
+    ('_system', 60 * 60 * 24 * 7),  # weekly
+    ('_forms', 60 * 60 * 24),  # daily
+    ('_anon', 60 * 60 * 24),  # daily
+)
 
 
 class ProtectTransform(object):
@@ -62,7 +73,7 @@ class ProtectTransform(object):
         except (TypeError, etree.ParseError):
             # XXX handle something special?
             LOGGER.warn('error parsing dom, failure to add csrf '
-                        'token to response?')
+                        'token to response for url %s' % self.request.URL)
             return None
 
     def transformString(self, result, encoding):
@@ -78,7 +89,7 @@ class ProtectTransform(object):
         self.request.response.setHeader('X-Frame-Options', X_FRAME_OPTIONS)
 
         # only auto CSRF protect authenticated users
-        if getSecurityManager().getUser() is None:
+        if isAnonymousUser(getSecurityManager().getUser()):
             return
 
         # if on confirm view, do not check, just abort and
@@ -94,7 +105,28 @@ class ProtectTransform(object):
         if IApplication.providedBy(context):
             return
 
-        if not self.check():
+        if self.check():
+            # safe check, let's see if it's time to rotate the keys
+            # yes, I know, this will cause a write on read...
+            # we know it's safe and the user is logged in
+            # disadvantage: only rotates if user is logged in.
+            #   sites that people don't log into often will not get keys
+            #   rotated
+            # possible edge case:
+            #   request was aborted, but redirected and we try to write?
+            #   XXX do we need to check if the transaction was aborted first?
+            # XXX should we check if the client is not read-only first?
+            manager = getUtility(IKeyManager)
+            current_time = time.time()
+            for ring_name, check_period in _ring_rotation_schedules:
+                try:
+                    ring = manager[ring_name]
+                    if (ring.last_rotation + check_period) < current_time:
+                        LOGGER.info('auto rotating keyring %s' % ring_name)
+                        ring.rotate()
+                except:
+                    continue
+        else:
             # we don't need to transform the doc, we're getting redirected
             return
 
@@ -155,6 +187,7 @@ class ProtectTransform(object):
             return None
         root = result.tree.getroot()
         host, port = self.getHost()
+        token = createToken()
         for form in root.cssselect('form'):
             # XXX should we only do POST? If we're logged in and
             # it's an internal form, I'm inclined to say no...
@@ -175,7 +208,7 @@ class ProtectTransform(object):
                 hidden = etree.Element("input")
                 hidden.attrib['name'] = '_authenticator'
                 hidden.attrib['type'] = 'hidden'
-                hidden.attrib['value'] = createToken()
+                hidden.attrib['value'] = token
                 form.append(hidden)
 
         return result

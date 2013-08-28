@@ -4,6 +4,9 @@ Changelog
 3.0dev (unreleased)
 -------------------
 
+- auto-rotate keyrings
+  [vangheem]
+
 - use specific keyring for protected forms
   [vangheem]
 

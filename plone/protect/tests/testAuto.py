@@ -5,6 +5,12 @@ from plone.protect.testing import PROTECT_FUNCTIONAL_TESTING
 
 from plone.protect import createToken
 from plone.protect.authenticator import AuthenticatorView
+from plone.keyring.interfaces import IKeyManager
+from zope.component import getUtility
+from plone.app.testing import logout
+from plone.app.testing import login
+from plone.app.testing import TEST_USER_NAME
+from plone.app.testing import TEST_USER_PASSWORD
 
 
 class AutoCSRFProtectTests(unittest.TestCase):
@@ -14,6 +20,12 @@ class AutoCSRFProtectTests(unittest.TestCase):
         self.portal = self.layer['portal']
         self.browser = Browser(self.layer['app'])
         self.request = self.layer['request']
+        login(self.portal, TEST_USER_NAME)
+        self.open('login_form')
+        self.browser.getControl(name='__ac_name').value = TEST_USER_NAME
+        self.browser.getControl(
+            name='__ac_password').value = TEST_USER_PASSWORD
+        self.browser.getControl(name='submit').click()
 
     def open(self, path):
         self.browser.open(self.portal.absolute_url() + '/' + path)
@@ -43,38 +55,31 @@ class AutoCSRFProtectTests(unittest.TestCase):
         except Exception, ex:
             self.assertEquals(ex.getcode(), 403)
 
-    def testCSRFHeader(self):
+    def test_CSRF_header(self):
         self.request.environ['HTTP_X_CSRF_TOKEN'] = createToken()
         view = AuthenticatorView(None, self.request)
         self.assertEqual(view.verify(), True)
 
-    def testIncorrectCSRFHeader(self):
+    def test_incorrect_CSRF_header(self):
         self.request.environ['HTTP_X_CSRF_TOKEN'] = 'foobar'
         view = AuthenticatorView(None, self.request)
         self.assertEqual(view.verify(), False)
 
-"""
-    def testAbortsTransactionIfNotProtected(self):
-        raise NotImplemented()
+    def test_only_add_auth_when_user_logged_in(self):
+        logout()
+        self.open('logout')
+        self.open('test-unprotected')
+        try:
+            self.browser.getForm('one').getControl(name="_authenticator")
+            self.assertEqual('anonymous should not be protected', '')
+        except LookupError:
+            pass
 
-    def testRedirectsToConfirmationIfNotProtected(self):
-        raise NotImplemented()
-
-    def testWorksCaseInsensativeFormAttributes(self):
-        raise NotImplemented()
-
-    def testProtectBlankAction(self):
-        raise NotImplemented()
-
-    def testProtectRelative(self):
-        raise NotImplemented()
-
-    def testProtectFullPathInternal(self):
-        raise NotImplemented()
-
-    def testDoNotProtectExternalPosts(self):
-        raise NotImplemented()
-
-    def testDoNotProtectGET(self):
-        raise NotImplemented()
-"""
+    def test_keyrings_get_rotated_on_requests(self):
+        manager = getUtility(IKeyManager)
+        ring = manager['_forms']
+        keys = ring.data
+        self.assertEqual(ring.last_rotation, 0)
+        self.open('test-unprotected')
+        self.assertNotEqual(keys, ring.data)
+        self.assertNotEqual(ring.last_rotation, 0)
