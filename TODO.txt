@@ -4,3 +4,5 @@
     - 301/302 response
     - reason: some things are safe to abort, not do confirm and redirect
     - or do we error out otherwise?
+- use keyring with multiple keys
+- rotate keys

@@ -14,10 +14,13 @@ except ImportError:
     import sha
 
 
+ANONYMOUS_USER = "Anonymous User"
+
+
 def _getUserName():
     user = getSecurityManager().getUser()
     if user is None:
-        return "Anonymous User"
+        return ANONYMOUS_USER
     return user.getUserName()
 
 
@@ -35,16 +38,36 @@ def _is_equal(val1, val2):
     return result == 0
 
 
+def _getKeyring(username):
+    manager = getUtility(IKeyManager)
+    if username == ANONYMOUS_USER:
+        try:
+            ring = manager[u'_anon']
+        except KeyError:
+            # no anonymous key defined.
+            # XXX should we even bother allowing to verify?
+            ring = manager[u'_system']
+    else:
+        try:
+            ring = manager[u"_forms"]
+        except KeyError:
+            ring = manager[u'_system']
+    return ring
+
+
 def _verify(request, extra='', name='_authenticator'):
+    """
+    2. auto rotate
+    3
+    """
     auth = request.get(name)
     if auth is None:
         auth = request.getHeader('X-CSRF-TOKEN')
         if auth is None:
             return False
 
-    manager = getUtility(IKeyManager)
-    ring = manager[u"_system"]
     user = _getUserName()
+    ring = _getKeyring(user)
 
     for key in ring:
         if key is None:
@@ -57,9 +80,9 @@ def _verify(request, extra='', name='_authenticator'):
 
 
 def createToken(extra=''):
-    manager = getUtility(IKeyManager)
-    secret = manager.secret()
     user = _getUserName()
+    ring = _getKeyring(user)
+    secret = ring.random()
     return hmac.new(secret, user + extra, sha).hexdigest()
 
 
