@@ -1,4 +1,5 @@
 import unittest2 as unittest
+import transaction
 
 from plone.testing.z2 import Browser
 from plone.protect.testing import PROTECT_FUNCTIONAL_TESTING
@@ -79,7 +80,8 @@ class AutoCSRFProtectTests(unittest.TestCase):
         manager = getUtility(IKeyManager)
         ring = manager['_forms']
         keys = ring.data
-        self.assertEqual(ring.last_rotation, 0)
+        ring.last_rotation = 0
+        transaction.commit()
         self.open('test-unprotected')
         self.assertNotEqual(keys, ring.data)
         self.assertNotEqual(ring.last_rotation, 0)

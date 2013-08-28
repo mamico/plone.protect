@@ -23,9 +23,11 @@ class MockRequest(dict):
 
 class KeyringTestCase(TestCase):
 
+    key_size = 1
+
     def setUp(self):
         self.sm = getGlobalSiteManager()
-        self.manager = KeyManager()
+        self.manager = KeyManager(self.key_size)
         self.sm.registerUtility(self.manager, provided=IKeyManager,
                                 event=False)
         # Tests modify the user object so we better make sure it is *our*

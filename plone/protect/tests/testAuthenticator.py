@@ -57,9 +57,11 @@ class AuthenticatorTests(KeyringTestCase):
 
 class VerifyTests(KeyringTestCase):
 
+    key_size = 2
+
     def setUp(self):
         self.request = MockRequest()
-        KeyringTestCase.setUp(self)
+        super(VerifyTests, self).setUp()
         self.view = AuthenticatorView(None, self.request)
 
     def setAuthenticator(self, key, extra='', name="_authenticator"):
@@ -78,7 +80,7 @@ class VerifyTests(KeyringTestCase):
         self.assertEqual(self.view.verify(name="_my_authenticator"), True)
 
     def testOlderSecretVerifies(self):
-        self.manager['_forms'].data[3] = "backup"
+        self.manager['_forms'].data[1] = "backup"
         self.setAuthenticator("backup")
         self.assertEqual(self.view.verify(), True)
 

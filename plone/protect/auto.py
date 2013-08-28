@@ -1,5 +1,6 @@
 import os
 import time
+import traceback
 
 from AccessControl import getSecurityManager
 from Acquisition import aq_parent
@@ -27,6 +28,8 @@ from plone.portlets.interfaces import IPortletAssignment
 from plone.keyring.interfaces import IKeyManager
 from zope.component import getUtility
 from plone.protect.authenticator import isAnonymousUser
+from zope.component import ComponentLookupError
+from ZODB.POSException import ConflictError
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
@@ -99,10 +102,11 @@ class ProtectTransform(object):
             transaction.abort()
             return self.transform(result)
 
-        # next, check if we're zope root.
+        # next, check if we're zope root or a resource not connected
+        # to a ZODB object--no context
         # XXX right now, we're not protecting zope root :(
         context = self.getContext()
-        if IApplication.providedBy(context):
+        if not context or IApplication.providedBy(context):
             return
 
         if self.check():
@@ -116,16 +120,20 @@ class ProtectTransform(object):
             #   request was aborted, but redirected and we try to write?
             #   XXX do we need to check if the transaction was aborted first?
             # XXX should we check if the client is not read-only first?
-            manager = getUtility(IKeyManager)
-            current_time = time.time()
-            for ring_name, check_period in _ring_rotation_schedules:
-                try:
-                    ring = manager[ring_name]
-                    if (ring.last_rotation + check_period) < current_time:
-                        LOGGER.info('auto rotating keyring %s' % ring_name)
-                        ring.rotate()
-                except:
-                    continue
+            try:
+                manager = getUtility(IKeyManager)
+                current_time = time.time()
+                for ring_name, check_period in _ring_rotation_schedules:
+                    try:
+                        ring = manager[ring_name]
+                        if (ring.last_rotation + check_period) < current_time:
+                            LOGGER.info('auto rotating keyring %s' % ring_name)
+                            ring.rotate()
+                    except KeyError:
+                        continue
+            except ComponentLookupError:
+                LOGGER.warn('cannot find key manager for url %s' % (
+                    self.request.URL))
         else:
             # we don't need to transform the doc, we're getting redirected
             return
@@ -144,18 +152,34 @@ class ProtectTransform(object):
         return aq_parent(published)
 
     def check(self):
+        """
+        just being very careful here about our check so we don't
+        cause errors that prevent this check from happening
+        """
+        try:
+            return self._check()
+        except ConflictError:
+            raise
+        except:
+            transaction.abort()
+            LOGGER.error("Error checking for CSRF. "
+                         "Transaction will be aborted since the request "
+                         "is now unsafe:\n%s" % (
+                             traceback.format_exc()))
+            return True
+
+    def _check(self):
         app = self.request.PARENTS[-1]
         if len(app._p_jar._registered_objects) > 0 and not \
                 IDisableCSRFProtection.providedBy(self.request):
-            # XXX Okay, we're writing here, we need to protect!
+            # Okay, we're writing here, we need to protect!
             try:
                 check(self.request)
                 return True
             except Forbidden:
                 if self.request.REQUEST_METHOD != 'GET':
-                    # only try to "fix" GET requests
+                    # only try to be "smart" with GET requests
                     raise
-                # abort the transaction and just be silent
                 # XXX
                 # okay, so right now, we're going to check if the current
                 # registered objects to write, are just portlet assignments.
@@ -172,13 +196,24 @@ class ProtectTransform(object):
                     LOGGER.info('aborting transaction due to no CSRF '
                                 'protection on url %s' % self.request.URL)
                     transaction.abort()
-                    data = self.request.form.copy()
-                    data['original_url'] = self.request.URL
-                    self.request.response.redirect('%s/@@confirm-action?%s' % (
-                        getSite().absolute_url(),
-                        urlencode(data)
-                    ))
-                    return False
+
+                    # conditions for doing the confirm form are:
+                    #   1. 301, 302 response code
+                    #   2. text/html response
+                    # otherwise,
+                    #   just abort with a log entry because we tried to
+                    #   write on read, without a POST request and we don't
+                    #   know what to do with it gracefully.
+                    resp = self.request.response
+                    ct = resp.headers.get('content-type')
+                    if resp.status in (301, 302) or 'text/html' in ct:
+                        data = self.request.form.copy()
+                        data['original_url'] = self.request.URL
+                        resp.redirect('%s/@@confirm-action?%s' % (
+                            getSite().absolute_url(),
+                            urlencode(data)
+                        ))
+                        return False
         return True
 
     def transform(self, result):
