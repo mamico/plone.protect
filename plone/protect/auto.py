@@ -25,6 +25,7 @@ from OFS.interfaces import IApplication
 from plone.protect.interfaces import IConfirmView
 from plone.portlets.interfaces import IPortletAssignment
 from plone.protect.authenticator import isAnonymousUser
+from Products.CMFCore.utils import getToolByName
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
@@ -184,20 +185,18 @@ class ProtectTransform(object):
         root = result.tree.getroot()
         host, port = self.getHost()
         token = createToken()
-        for form in root.cssselect('form'):
+        forms = root.cssselect('form')
+        if len(forms) > 0:
+            portal_url = getToolByName(self.getContext(), 'portal_url')
+        for form in forms:
             # XXX should we only do POST? If we're logged in and
             # it's an internal form, I'm inclined to say no...
             #method = form.attrib.get('method', 'GET').lower()
             #if method != 'post':
             #    continue
             action = form.attrib.get('action', '').strip()
-            if action:
-                # prevent leaking of token
-                if (action.startswith('http://') or
-                    action.startswith('https://')) and not (
-                        action.startswith(host) or
-                        action.startswith(host + ':' + port)):
-                    continue
+            if not portal_url.isURLInPortal(action):
+                continue
             # check if the token is already on the form..
             hidden = form.cssselect('[name="_authenticator"]')
             if len(hidden) == 0:
