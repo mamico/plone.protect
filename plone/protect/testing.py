@@ -47,5 +47,19 @@ class TestUnprotectedView(BrowserView):
 <form id="three" method="GET">
     <input type="submit" name="submit3" value="submit3" />
 </form>
+<form id="four" action="//foobar/somepath.php" method="POST">
+    <input type="submit" name="submit4" value="submit4" />
+</form>
+<form id="five" action="//nohost/plone" method="POST">
+    <input type="submit" name="submit5" value="submit5" />
+</form>
+<form id="six" action="https://foobar/somepath.php" method="POST">
+    <input type="submit" name="submit6" value="submit6" />
+</form>
+<form id="seven" action="a/relative/path" method="POST">
+    <input type="submit" name="submit7" value="submit7" />
+</form>
 </body>
-</html>""" % self.request.URL
+</html>""" % (
+            self.request.URL,
+        )

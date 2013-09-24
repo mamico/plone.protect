@@ -9,14 +9,15 @@ from plone.protect.authenticator import isAnonymousUser
 from plone.protect.interfaces import IConfirmView
 from plone.protect.interfaces import IDisableCSRFProtection
 from plone.transformchain.interfaces import ITransform
-from Products.CMFCore.utils import getToolByName
 from repoze.xmliter.utils import getHTMLSerializer
 import transaction
 from zExceptions import Forbidden
 from zope.component import adapts
 from zope.component.hooks import getSite
+from zope.component import ComponentLookupError
 from zope.interface import implements, Interface
 
+from urlparse import urlparse
 from urllib import urlencode
 import os
 import traceback
@@ -87,11 +88,10 @@ class ProtectTransform(object):
             transaction.abort()
             return self.transform(result)
 
-        # next, check if we're zope root or a resource not connected
+        # next, check if we're a resource not connected
         # to a ZODB object--no context
-        # XXX right now, we're not protecting zope root :(
         context = self.getContext()
-        if not context or IApplication.providedBy(context):
+        if not context:
             return
 
         if not self.check():
@@ -100,12 +100,6 @@ class ProtectTransform(object):
 
         # finally, let's run the transform
         return self.transform(result)
-
-    def getHost(self):
-        base1 = self.request.get('BASE1')
-        host = base1.lower()
-        serverPort = self.request.get('SERVER_PORT')
-        return host, serverPort
 
     def getContext(self):
         published = self.request.get('PUBLISHED')
@@ -134,6 +128,15 @@ class ProtectTransform(object):
             try:
                 check(self.request)
                 return True
+            except ComponentLookupError:
+                # okay, it's possible we're at the zope root and the KeyManager
+                # hasn't been installed yet. Let's check and carry on
+                # if this is the case
+                if IApplication.providedBy(self.getContext()):
+                    LOGGER.info('skipping csrf protection on zope root until '
+                                'keymanager gets installed')
+                    return True
+                raise
             except Forbidden:
                 if self.request.REQUEST_METHOD != 'GET':
                     # only try to be "smart" with GET requests
@@ -174,24 +177,38 @@ class ProtectTransform(object):
                         return False
         return True
 
+    def isActionInSite(self, action, current_url):
+        # sanitize url
+        url = urlparse(action)
+        if not url.hostname:
+            # no hostname means this is relative
+            return True
+        if url.hostname != current_url.hostname:
+            return False
+        return True
+
     def transform(self, result):
         result = self.parseTree(result)
         if result is None:
             return None
         root = result.tree.getroot()
-        host, port = self.getHost()
-        token = createToken()
-        forms = root.cssselect('form')
-        if len(forms) > 0:
-            portal_url = getToolByName(self.getContext(), 'portal_url')
-        for form in forms:
+        url = urlparse(self.request.URL)
+        try:
+            token = createToken()
+        except ComponentLookupError:
+            if IApplication.providedBy(self.getContext()):
+                # skip here, utility not installed yet on zope root
+                return
+            raise
+
+        for form in root.cssselect('form'):
             # XXX should we only do POST? If we're logged in and
             # it's an internal form, I'm inclined to say no...
             #method = form.attrib.get('method', 'GET').lower()
             #if method != 'post':
             #    continue
             action = form.attrib.get('action', '').strip()
-            if not portal_url.isURLInPortal(action):
+            if not self.isActionInSite(action, url):
                 continue
             # check if the token is already on the form..
             hidden = form.cssselect('[name="_authenticator"]')
