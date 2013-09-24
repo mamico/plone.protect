@@ -25,7 +25,6 @@ from OFS.interfaces import IApplication
 from plone.protect.interfaces import IConfirmView
 from plone.portlets.interfaces import IPortletAssignment
 from plone.protect.authenticator import isAnonymousUser
-from ZODB.POSException import ConflictError
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
@@ -122,15 +121,13 @@ class ProtectTransform(object):
         """
         try:
             return self._check()
-        except ConflictError:
-            raise
         except:
             transaction.abort()
             LOGGER.error("Error checking for CSRF. "
                          "Transaction will be aborted since the request "
                          "is now unsafe:\n%s" % (
                              traceback.format_exc()))
-            return True
+            raise
 
     def _check(self):
         app = self.request.PARENTS[-1]

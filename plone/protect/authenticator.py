@@ -60,10 +60,6 @@ def _getKeyring(username):
 
 
 def _verify(request, extra='', name='_authenticator'):
-    """
-    2. auto rotate
-    3
-    """
     auth = request.get(name)
     if auth is None:
         auth = request.getHeader('X-CSRF-TOKEN')

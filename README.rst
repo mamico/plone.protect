@@ -160,6 +160,9 @@ Just add an interface to the current request object::
     from zope.interface import alsoProvides
     alsoProvides(request, IDisableCSRFProtection)
 
+Warning! When you do this, the current request is susceptible to CSRF
+exploits so do any required CSRF protection manually.
+
 
 Clickjacking Protection
 =======================
