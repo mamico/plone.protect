@@ -26,6 +26,7 @@ LOGGER = logging.getLogger('plone.protect')
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
+CSRF_DISABLED = os.environ.get('PLONE_CSRF_DISABLED', 'false') == 'true'
 
 
 class ProtectTransform(object):
@@ -222,6 +223,8 @@ class ProtectTransform(object):
         return result
 
     def __call__(self, result, encoding):
+        if CSRF_DISABLED:
+            return result
         if isinstance(result, unicode):
             newResult = self.transformUnicode(result, encoding)
         elif isinstance(result, str):

@@ -176,3 +176,13 @@ header. plone.protect will set the X-Frame-Options value to `SAMEORIGIN`.
 To customize this value, you can either override it at your proxy server or
 you can set the environment variable of `PLONE_X_FRAME_OPTIONS` to whatever
 value you'd like plone.protect to set this to.
+
+
+Disable All Automatic CSRF Protection
+=====================================
+
+To disable all automatic CSRF protection, set the environment variable
+`PLONE_CSRF_DISABLED` value to `true`.
+
+WARNING! It is very dangerous to do this. Do not do this unless the zeo client
+with this setting is not public and you know what you are doing.
