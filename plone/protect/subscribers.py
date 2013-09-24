@@ -1,14 +1,13 @@
-import time
 from plone.keyring.interfaces import IKeyManager
-from zope.component import getUtility
-from zope.component import ComponentLookupError
-import logging
-from Products.PluggableAuthService.interfaces.events import IUserLoggedInEvent
-from zope.component import adapter
 from plone.protect.interfaces import IDisableCSRFProtection
+from Products.PluggableAuthService.interfaces.events import IUserLoggedInEvent
+from zope.component import ComponentLookupError
+from zope.component import adapter
+from zope.component import getUtility
 from zope.interface import alsoProvides
 
-
+import time
+import logging
 LOGGER = logging.getLogger('plone.protect')
 
 _ring_rotation_schedules = (

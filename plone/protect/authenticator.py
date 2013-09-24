@@ -1,13 +1,13 @@
-import hmac
-from zope.component import getUtility
-from zope.interface import implements
 from AccessControl import getSecurityManager
-from zExceptions import Forbidden
-from ZPublisher.HTTPRequest import HTTPRequest
-from Products.Five import BrowserView
 from plone.keyring.interfaces import IKeyManager
 from plone.protect.interfaces import IAuthenticatorView
+from Products.Five import BrowserView
+from zExceptions import Forbidden
+from zope.component import getUtility
+from zope.interface import implements
+from ZPublisher.HTTPRequest import HTTPRequest
 
+import hmac
 try:
     from hashlib import sha1 as sha
 except ImportError:

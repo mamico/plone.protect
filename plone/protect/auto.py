@@ -1,31 +1,27 @@
-import os
-import traceback
-
 from AccessControl import getSecurityManager
 from Acquisition import aq_parent
-
+from lxml import etree
+from OFS.interfaces import IApplication
+from plone.portlets.interfaces import IPortletAssignment
 from plone.protect.authenticator import check
 from plone.protect.authenticator import createToken
-
+from plone.protect.authenticator import isAnonymousUser
+from plone.protect.interfaces import IConfirmView
 from plone.protect.interfaces import IDisableCSRFProtection
-
-import logging
-LOGGER = logging.getLogger('plone.protect')
-
 from plone.transformchain.interfaces import ITransform
-from zope.interface import implements, Interface
-from zope.component import adapts
+from Products.CMFCore.utils import getToolByName
 from repoze.xmliter.utils import getHTMLSerializer
-from lxml import etree
 import transaction
 from zExceptions import Forbidden
+from zope.component import adapts
 from zope.component.hooks import getSite
+from zope.interface import implements, Interface
+
 from urllib import urlencode
-from OFS.interfaces import IApplication
-from plone.protect.interfaces import IConfirmView
-from plone.portlets.interfaces import IPortletAssignment
-from plone.protect.authenticator import isAnonymousUser
-from Products.CMFCore.utils import getToolByName
+import os
+import traceback
+import logging
+LOGGER = logging.getLogger('plone.protect')
 
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')

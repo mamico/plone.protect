@@ -1,7 +1,9 @@
 from AccessControl.requestmethod import _buildFacade
-import inspect
 from plone.protect.authenticator import createToken
 from zope.globalrequest import getRequest
+
+import inspect
+
 _default = []
 
 # This is based on AccessControl.requestmethod.postonly
