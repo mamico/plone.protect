@@ -37,8 +37,8 @@ class ProtectTransform(object):
     implements(ITransform)
     adapts(Interface, Interface)  # any context, any request
 
-    # should be the last thing that runs here...
-    order = 999999
+    # should be last lxml related transform
+    order = 9000
 
     def __init__(self, published, request):
         self.published = published
