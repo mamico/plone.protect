@@ -3,6 +3,7 @@
     xmlns:zcml="http://namespaces.zope.org/zcml"
     xmlns:browser="http://namespaces.zope.org/browser"
     xmlns:genericsetup="http://namespaces.zope.org/genericsetup"
+    xmlns:monkey="http://namespaces.plone.org/monkey"
     i18n_domain="plone.protect">
 
     <include package="plone.keyring" />
@@ -42,5 +43,13 @@
 
     <subscriber handler=".subscribers.onUserLogsIn" />
 
-</configure>
+    <include package="collective.monkeypatcher" />
 
+    <monkey:patch
+        description="Allows ATContentTypes add forms to append auth token"
+        class="Products.CMFFormController.Actions.RedirectTo.RedirectTo"
+        original="__call__"
+        replacement=".monkey.RedirectTo__call__"
+        />
+
+</configure>
