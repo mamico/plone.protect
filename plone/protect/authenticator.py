@@ -65,6 +65,9 @@ def _verify(request, extra='', name='_authenticator'):
         auth = request.getHeader('X-CSRF-TOKEN')
         if auth is None:
             return False
+    if isinstance(auth, list):
+        # in case 2 auth attributes were added to form. It can happen
+        auth = auth[0]
 
     user = _getUserName()
     ring = _getKeyring(user)

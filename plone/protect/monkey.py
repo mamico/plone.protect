@@ -15,5 +15,8 @@ def RedirectTo__call__(self, controller_state):
             url += '&'
         else:
             url += '?'
-        url += '_authenticator=' + request.form['_authenticator']
+        auth = request.form['_authenticator']
+        if isinstance(auth, list):
+            auth = auth[0]
+        url += '_authenticator=' + auth
     return request.RESPONSE.redirect(url)
