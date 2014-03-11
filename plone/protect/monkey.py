@@ -10,7 +10,9 @@ def RedirectTo__call__(self, controller_state):
         url = urljoin(context.absolute_url()+'/', url)
     url = self.updateQuery(url, controller_state.kwargs)
     request = context.REQUEST
-    if '_authenticator' in request.form:
+    # this is mostly just for archetypes edit forms...
+    if 'edit' in url and '_authenticator' not in url and \
+            '_authenticator' in request.form:
         if '?' in url:
             url += '&'
         else:

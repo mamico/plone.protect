@@ -142,6 +142,7 @@ class ProtectTransform(object):
                 if self.request.REQUEST_METHOD != 'GET':
                     # only try to be "smart" with GET requests
                     raise
+
                 # XXX
                 # okay, so right now, we're going to check if the current
                 # registered objects to write, are just portlet assignments.
@@ -208,6 +209,13 @@ class ProtectTransform(object):
             #method = form.attrib.get('method', 'GET').lower()
             #if method != 'post':
             #    continue
+
+            # some get forms we definitely do not want to protect.
+            # for now, we know search we do not want to protect
+            method = form.attrib.get('method', 'GET').lower()
+            action = form.attrib.get('action', '').strip()
+            if method == 'get' and '@@search' in action:
+                continue
             action = form.attrib.get('action', '').strip()
             if not self.isActionInSite(action, url):
                 continue
