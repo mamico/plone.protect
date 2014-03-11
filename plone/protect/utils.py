@@ -73,9 +73,10 @@ def addTokenToUrl(url, req=None):
         req.environ['_auth_token'] = createToken()
     token = req.environ['_auth_token']
 
-    if '?' not in url:
-        url += '?'
-    else:
-        url += '&'
-    url += '_authenticator=' + token
+    if '_authenticator' not in url:
+        if '?' not in url:
+            url += '?'
+        else:
+            url += '&'
+        url += '_authenticator=' + token
     return url
