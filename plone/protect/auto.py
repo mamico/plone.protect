@@ -23,6 +23,7 @@ from urllib import urlencode
 import os
 import traceback
 import logging
+import itertools
 LOGGER = logging.getLogger('plone.protect')
 
 
@@ -76,6 +77,8 @@ class ProtectTransform(object):
     def transformIterable(self, result, encoding):
         """Apply the transform if required
         """
+        if CSRF_DISABLED:
+            return None
         # before anything, do the clickjacking protection
         self.request.response.setHeader('X-Frame-Options', X_FRAME_OPTIONS)
 
@@ -122,10 +125,24 @@ class ProtectTransform(object):
                              traceback.format_exc()))
             raise
 
-    def _check(self):
+    def _registered_objects(self):
         app = self.request.PARENTS[-1]
-        if len(app._p_jar._registered_objects) > 0 and not \
-                IDisableCSRFProtection.providedBy(self.request):
+        return list(itertools.chain.from_iterable([
+            conn._registered_objects
+            for conn in app._p_jar.connections.values()
+        ]))
+
+    def _store_count(self):
+        app = self.request.PARENTS[-1]
+        # TODO: skip temporary ?
+        return sum(
+            [conn._store_count for conn in app._p_jar.connections.values()]
+        )
+
+    def _check(self):
+        # if len(self.registered_objects()) > 0 and \
+        if self._store_count() > 0 and \
+                not IDisableCSRFProtection.providedBy(self.request):
             # Okay, we're writing here, we need to protect!
             try:
                 check(self.request)
@@ -152,7 +169,7 @@ class ProtectTransform(object):
                 # need to be portlet assignments. XXX needs to be fixed
                 # somehow...
                 all_portlet_assignments = True
-                for obj in app._p_jar._registered_objects:
+                for obj in self._registered_objects():
                     if not IPortletAssignment.providedBy(obj):
                         all_portlet_assignments = False
                         break
@@ -234,8 +251,6 @@ class ProtectTransform(object):
         return result
 
     def __call__(self, result, encoding):
-        if CSRF_DISABLED:
-            return result
         if isinstance(result, unicode):
             newResult = self.transformUnicode(result, encoding)
         elif isinstance(result, str):
