@@ -123,10 +123,14 @@ class ProtectTransform(object):
                          "Transaction will be aborted since the request "
                          "is now unsafe:\n%s" % (
                              traceback.format_exc()))
+            # TODO: add a statusmessage?
+            # XXX: reraise could be unuseful, because p.transformchain silences
+            #      exceptions different than ConfictError ....
             raise
 
     def _registered_objects(self):
         app = self.request.PARENTS[-1]
+        # TODO: skip temporary ?
         return list(itertools.chain.from_iterable([
             conn._registered_objects
             for conn in app._p_jar.connections.values()
@@ -135,6 +139,11 @@ class ProtectTransform(object):
     def _check(self):
         if len(self._registered_objects()) > 0 and \
                 not IDisableCSRFProtection.providedBy(self.request):
+            # XXX: we need to check CSRF also without request's data?
+            if not self.request.form:
+                LOGGER.warning('no data on request, skipping CSRF protection'
+                               'on url %s' % self.request.URL)
+                return True
             # Okay, we're writing here, we need to protect!
             try:
                 check(self.request)
