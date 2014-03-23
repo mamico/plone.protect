@@ -132,16 +132,8 @@ class ProtectTransform(object):
             for conn in app._p_jar.connections.values()
         ]))
 
-    def _store_count(self):
-        app = self.request.PARENTS[-1]
-        # TODO: skip temporary ?
-        return sum(
-            [conn._store_count for conn in app._p_jar.connections.values()]
-        )
-
     def _check(self):
-        # if len(self.registered_objects()) > 0 and \
-        if self._store_count() > 0 and \
+        if len(self._registered_objects()) > 0 and \
                 not IDisableCSRFProtection.providedBy(self.request):
             # Okay, we're writing here, we need to protect!
             try:
