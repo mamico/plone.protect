@@ -4,6 +4,7 @@ from plone.app.testing import applyProfile
 from plone.app.testing.layers import FunctionalTesting
 from Products.Five import BrowserView
 from zope.configuration import xmlconfig
+import transaction
 
 
 class ProtectedLayer(PloneSandboxLayer):
@@ -35,11 +36,15 @@ class TestUnprotectedView(BrowserView):
         if 'submit1' in self.request.form or 'submit2' in self.request.form:
             self.context.foo = 'bar'
             self.context._p_changed = True
+            if self.request.form.get('savepoint') == 'true':
+                transaction.savepoint()
+            return "context changed"
         return """
 <html>
 <body>
 <form id="one" method="POST">
     <input type="submit" name="submit1" value="submit1" />
+    <input type="hidden" name="savepoint" value="false" />
 </form>
 <form id="two" action="%s" METHOD="post">
     <input type="submit" name="submit2" value="submit2" />
