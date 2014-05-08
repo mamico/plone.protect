@@ -9,7 +9,7 @@ from plone.protect.authenticator import isAnonymousUser
 from plone.protect.interfaces import IConfirmView
 from plone.protect.interfaces import IDisableCSRFProtection
 from plone.transformchain.interfaces import ITransform
-from repoze.xmliter.utils import getHTMLSerializer
+# from repoze.xmliter.utils import getHTMLSerializer
 import transaction
 from zExceptions import Forbidden
 from zope.component import adapts
@@ -29,7 +29,40 @@ LOGGER = logging.getLogger('plone.protect')
 
 X_FRAME_OPTIONS = os.environ.get('PLONE_X_FRAME_OPTIONS', 'SAMEORIGIN')
 CSRF_DISABLED = os.environ.get('PLONE_CSRF_DISABLED', 'false') == 'true'
+CSRF_DRYRUN = os.environ.get('PLONE_CSRF_DRYRUN', 'false') == 'true'
 
+from lxml import etree, html
+from repoze.xmliter.utils import getXMLSerializer
+
+
+# https://github.com/datakurre/jyu.portfolio.layout/blob/master/jyu/portfolio/layout/xmliter.py
+def getHTMLSerializer(iterable, pretty_print=False, encoding=None):
+    """Convenience method to create an XMLSerializer instance using the HTML
+       parser and string serialization. If the doctype is XHTML or XHTML
+       transitional, use the XML serializer."""
+    serializer = getXMLSerializer(
+                        iterable,
+                        parser=html.HTMLParser,
+                        serializer=html.tostring,
+                        pretty_print=pretty_print,
+                        encoding=encoding,
+                    )
+    if serializer.tree.docinfo.doctype and 'XHTML' in serializer.tree.docinfo.doctype:
+        # MONKEYPATCH FIXME: etree.tostring breaks <script/>-tags, which contain
+        # with CDATA javascript. Don't use etree.tostring, if any found.
+        #
+        # The long story:
+        #
+        # Some formwidgets on Plone do still use inline javascript, and some of them
+        # contain CDATA. Unfortunately, <![CDATA[]]> parsed with html.HTMLParser will
+        # break when serialized with etree.tostring. Yet, <![CDATA[]]> must remain
+        # commented within <script/> (e.g. //<![CDATA[ or /* <![CDATA[ */), because
+        # Plone delivers text/html, not application/xhtml+xml, which is required to
+        # properly handle <![CDATA[]]>!
+        if len(serializer.tree.xpath("//script[contains(text(), '<![CDATA[')]")) == 0:
+            serializer.serializer = etree.tostring
+
+    return serializer
 
 class ProtectTransform(object):
     """
@@ -118,15 +151,20 @@ class ProtectTransform(object):
         try:
             return self._check()
         except:
-            transaction.abort()
-            LOGGER.error("Error checking for CSRF. "
-                         "Transaction will be aborted since the request "
-                         "is now unsafe:\n%s" % (
-                             traceback.format_exc()))
-            # TODO: add a statusmessage?
-            # XXX: reraise could be unuseful, because p.transformchain silences
-            #      exceptions different than ConfictError ....
-            raise
+            if CSRF_DRYRUN:
+                LOGGER.warning("Warning (dry run mode) checking for CSRF. "
+                               "The request is now unsafe:\n%r" % (
+                               self.request))
+            else:
+                transaction.abort()
+                LOGGER.error("Error checking for CSRF. "
+                             "Transaction will be aborted since the request "
+                             "is now unsafe:\n%s" % (
+                                 traceback.format_exc()))
+                # TODO: add a statusmessage?
+                # XXX: reraise could be unuseful, because p.transformchain silences
+                #      exceptions different than ConfictError ....
+                raise
 
     def _registered_objects(self):
         app = self.request.PARENTS[-1]
@@ -140,10 +178,10 @@ class ProtectTransform(object):
         if len(self._registered_objects()) > 0 and \
                 not IDisableCSRFProtection.providedBy(self.request):
             # XXX: we need to check CSRF also without request's data?
-            if not self.request.form:
-                LOGGER.warning('no data on request, skipping CSRF protection'
-                               'on url %s' % self.request.URL)
-                return True
+            # if not self.request.form:
+            #     LOGGER.warning('no data on request, skipping CSRF protection'
+            #                    'on url %s' % self.request.URL)
+            #     return True
             # Okay, we're writing here, we need to protect!
             try:
                 check(self.request)
@@ -160,6 +198,8 @@ class ProtectTransform(object):
             except Forbidden:
                 if self.request.REQUEST_METHOD != 'GET':
                     # only try to be "smart" with GET requests
+                    raise
+                if CSRF_DRYRUN:
                     raise
 
                 # XXX
