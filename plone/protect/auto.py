@@ -153,7 +153,7 @@ class ProtectTransform(object):
         except:
             if CSRF_DRYRUN:
                 LOGGER.warning("Warning (dry run mode) checking for CSRF. "
-                               "The request is now unsafe:\n%r" % (
+                               "The request is now unsafe: %r" % (
                                self.request))
             else:
                 transaction.abort()
