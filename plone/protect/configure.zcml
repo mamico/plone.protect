@@ -28,7 +28,7 @@
         provides="Products.GenericSetup.interfaces.EXTENSION"
         for="Products.CMFCore.interfaces.ISiteRoot"
         />
-
+ 
     <adapter
         name="plone.protect.autocsrf"
         factory=".auto.ProtectTransform"

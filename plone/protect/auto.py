@@ -34,6 +34,11 @@ CSRF_DRYRUN = os.environ.get('PLONE_CSRF_DRYRUN', 'false') == 'true'
 from lxml import etree, html
 from repoze.xmliter.utils import getXMLSerializer
 
+try:
+    from collective.singing.interfaces import IChannel
+    HAS_SD = True
+except ImportError:
+    HAS_SD = False
 
 # https://github.com/datakurre/jyu.portfolio.layout/blob/master/jyu/portfolio/layout/xmliter.py
 def getHTMLSerializer(iterable, pretty_print=False, encoding=None):
@@ -132,6 +137,11 @@ class ProtectTransform(object):
         if not context:
             return
 
+        # XXX buggy code
+        if HAS_SD:
+            if IChannel.providedBy(context):
+                return None
+        
         if not self.check():
             # we don't need to transform the doc, we're getting redirected
             return
